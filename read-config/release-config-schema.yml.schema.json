@@ -1,0 +1,214 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "project": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "name"
+      ]
+    },
+    "publisher": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "path",
+        "url"
+      ]
+    },
+    "checks": {
+      "type": "object",
+      "properties": {
+        "svn": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "identifiers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "type": {
+                      "type": "string"
+                    },
+                    "pattern": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "pattern",
+                    "type"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "description",
+              "id",
+              "identifiers"
+            ]
+          }
+        },
+        "checksum": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "algorithm": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "algorithm",
+              "description",
+              "id"
+            ]
+          }
+        },
+        "signature": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "method": {
+                "type": "string"
+              },
+              "keys": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "description",
+              "id",
+              "keys",
+              "method"
+            ]
+          }
+        },
+        "publish": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "release-type": {
+              "type": "string"
+            },
+            "exclude_extensions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string"
+                  },
+                  "pattern": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "pattern",
+                  "type"
+                ]
+              }
+            },
+            "compare": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "package_names": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string"
+                      },
+                      "pattern": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "pattern",
+                      "type"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "package_names",
+                "path",
+                "url"
+              ]
+            }
+          },
+          "required": [
+            "compare",
+            "description",
+            "exclude_extensions",
+            "id",
+            "release-type"
+          ]
+        }
+      },
+      "required": [
+        "checksum",
+        "publish",
+        "signature",
+        "svn"
+      ]
+    }
+  },
+  "required": [
+    "checks",
+    "project",
+    "publisher"
+  ]
+}

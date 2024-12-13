@@ -1,0 +1,48 @@
+project:
+  name: airflow-publish
+  description: "Publish airflow packages to PyPI"
+publisher:
+  name: airflow
+  url: https://dist.apache.org/repos/dist/dev/airflow
+  path: "2.10.4rc1/"
+checks:
+  svn:
+    - id: extension
+      description: "Validate svn package extensions"
+      identifiers:
+        - type: regex
+          pattern: ".*(py3-none-any.whl|tar.gz.sha512|tar.gz.asc|tar.gz|py3-none-any.whl.asc|py3-none-any.whl.sha512)$"
+
+    - id: package_name
+      description: "Validate svn package names"
+      identifiers:
+        - type: regex
+          pattern: ".*(apache_airflow.*)$"
+
+        - type: regex
+          pattern: ".*(apache-airflow.*)$"
+
+  checksum:
+    - id: checksum
+      description: "Validate check sum with SHA512"
+      algorithm: "sha512"
+
+  signature:
+    - id: signature
+      description: "Validate signatures with GPG of packages"
+      method: gpg
+      keys: "https://dist.apache.org/repos/dist/release/airflow/KEYS"
+
+  publish:
+    id: publish
+    description: "Publish provider packages to PyPI"
+    release-type: "RC_VERSION"
+    exclude_extensions:
+      - type: regex
+        pattern: ".*(.asc|.sha512)$"
+    compare:
+      url: https://dist.apache.org/repos/dist/release/airflow/
+      path: "2.10.4"
+      package_names:
+       - type: regex
+         pattern: "(apache_airflow_providers.*?)(?=rc)"

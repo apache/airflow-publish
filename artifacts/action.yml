@@ -1,0 +1,125 @@
+name: "Upload as artifacts"
+description: "Uploads the release distributions as artifacts"
+
+inputs:
+  publish-config:
+    description: >
+      Json config for publishing packages. it contains all the information required to publish the packages to PyPI. eg:
+      publish:
+        id: publish
+        description: "Publish provider packages to PyPI"
+        release-type: "RC_VERSION"
+        exclude_extensions:
+          - type: regex
+            pattern: ".*(.asc|.sha512)$"
+        compare:
+          url: "https://dist.apache.org/repos/dist/release/airflow/"
+          path: "providers/"
+          package_names:
+           - type: regex
+             pattern: "(apache_airflow_providers.*?)(?=rc)"
+      
+      release-type: RC_VERSION It will consider packages from dev/ folder and publish to PyPI.
+      release-type: PYPI_VERSION It will consider packages from release/ folder and publish to PyPI.
+      compare: Section contains the release packages, which is used to compare the packages in dev folder and only matching 
+      packages will be published to PyPI.
+    required: true
+
+  temp-dir:
+    description: >
+      Checkout directory of svn repo, this is used to checkout the svn repo.
+    required: false
+    default: "asf-dist"
+
+  repo-path:
+    description: >
+      Path to the svn repo. Lets say to publish the packages from the dev folder.
+      eg: svn repo structure is https://dist.apache.org/repos/dist/
+        dev/airflow/providers
+        release/airflow/providers
+      now to publish the packages from dev providers folder, set url and path like below in the release-config.yml
+      url: https://dist.apache.org/repos/dist/dev/airflow
+      repo-path: providers/
+    required: true
+
+  mode:
+    description: >
+      Mode to run the action, The default mode is 'VERIFY' which will only verify the packages and displays the what will be published.
+      to publish the packages to PyPI set the mode to 'RELEASE'.
+    required: false
+    default: "VERIFY"
+
+  publisher-name:
+    description: >
+      Name of the publisher eg: providers, this is used to name the steps in the workflow
+    required: true
+
+  if-no-files-found:
+    description: >
+      The desired behavior if no files are found using the provided path.
+      
+      Available Options:
+        warn: Output a warning but do not fail the action
+        error: Fail the action with an error message
+        ignore: Do not output any warnings or errors, the action does not fail
+    default: 'warn'
+  retention-days:
+    description: >
+      Duration after which artifact will expire in days. 0 means using default retention.
+
+      Minimum 1 day.
+      Maximum 90 days unless changed from the repository settings page.
+    default: '5'
+  compression-level:
+    description: >
+      The level of compression for Zlib to be applied to the artifact archive.
+      The value can range from 0 to 9:
+      - 0: No compression
+      - 1: Best speed
+      - 6: Default compression (same as GNU Gzip)
+      - 9: Best compression
+      Higher levels will result in better compression, but will take longer to complete.
+      For large files that are not easily compressed, a value of 0 is recommended for significantly faster uploads.
+    default: '6'
+  overwrite:
+    description: >
+      If true, an artifact with a matching name will be deleted before a new one is uploaded.
+      If false, the action will fail if an artifact for the given name already exists.
+      Does not fail if the artifact does not exist.
+    default: 'false'
+
+  artifact-name:
+    description: >
+      Name of the artifact to be uploaded
+    required: false
+    default: "pypi-packages"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.11"
+
+    - name: "Move release distributions to dist directory"
+      shell: bash
+      id: move-release-dists
+      env:
+        PUBLISH_PACKAGES_CONFIG: ${{ inputs.publish-config }}
+        DIST_PATH: "${{ github.workspace }}/${{ inputs.temp-dir }}/dist"
+        MODE: ${{ inputs.mode }}
+      run: |
+        python3 -m pip install uv
+        uv run $GITHUB_ACTION_PATH/publish_packages_finder.py
+      working-directory: "./${{ inputs.temp-dir }}/${{ inputs.repo-path }}"
+
+    - name: "Upload ${{ inputs.publisher-name }} to artifacts"
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: "${{ github.workspace }}/${{ inputs.temp-dir }}/dist/*"
+        retention-days: ${{ inputs.retention-days }}
+        if-no-files-found: ${{ inputs.if-no-files-found }}
+        compression-level: ${{ inputs.compression-level }}
+        overwrite: ${{ inputs.overwrite }}
