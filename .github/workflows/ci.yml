@@ -16,7 +16,7 @@
 # under the License.
 #
 ---
-name: Test actions scripts
+name: Unit test action scripts
 on:
   workflow_dispatch:
   pull_request:

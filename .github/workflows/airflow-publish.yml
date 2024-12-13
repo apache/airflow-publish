@@ -16,7 +16,7 @@
 # under the License.
 #
 ---
-name: Publish airflow packages
+name: Dry run publish airflow packages
 description: "Publish or verify svn artifacts"
 
 on:
