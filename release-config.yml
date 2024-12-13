@@ -35,7 +35,7 @@ checks:
 
   publish:
     id: publish
-    description: "Publish provider packages to PyPI"
+    description: "Publish airflow packages to PyPI"
     release-type: "RC_VERSION"
     exclude_extensions:
       - type: regex
@@ -45,4 +45,4 @@ checks:
       path: "2.10.4"
       package_names:
        - type: regex
-         pattern: "(apache_airflow_providers.*?)(?=rc)"
+         pattern: "(apache_airflow.*?)(?=rc)"
