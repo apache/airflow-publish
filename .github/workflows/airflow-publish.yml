@@ -144,6 +144,7 @@ jobs:
         retention-days: ${{ inputs.retention-days }}
         compression-level: ${{ inputs.compression-level }}
         overwrite: ${{ inputs.overwrite }}
+        artifact-name: ${{ inputs.artifact-name }}
 
 
   publish-to-pypi:
