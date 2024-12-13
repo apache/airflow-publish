@@ -1,6 +1,6 @@
-# gh-svn-pypi-publisher
+# Airflow Publish
 
-**`gh-svn-pypi-publisher`** is a composite action repository used to validate artifacts and publish to PyPI from SVN.
+**`airflow publish`** is a composite action repository used to validate artifacts and publish to PyPI from SVN.
 
 ## Composite Actions Used in This Repo
 
