@@ -1,0 +1,170 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+---
+name: Publish airflow packages
+description: "Publish or verify svn artifacts"
+
+on:
+  workflow_dispatch:
+    inputs:
+      release-config:
+        description: "Path to the release config file"
+        required: true
+        default: "release-config.yml"
+      temp-dir:
+        description: >
+          Checkout directory of svn repo, this is used to checkout the svn repo.
+        required: false
+        default: "asf-dist"
+      mode:
+        description: >
+          Mode to run the action, The default mode is 'VERIFY' which will only verify the packages and displays the what will be published.
+          to publish the packages to PyPI set the mode to 'RELEASE'.
+        required: false
+        default: "VERIFY"
+      if-no-files-found:
+        description: >
+          The desired behavior if no files are found using the provided path.
+  
+          Available Options:
+            warn: Output a warning but do not fail the action
+            error: Fail the action with an error message
+            ignore: Do not output any warnings or errors, the action does not fail
+        default: 'warn'
+      retention-days:
+        description: >
+          Duration after which artifact will expire in days. 0 means using default retention.
+  
+          Minimum 1 day.
+          Maximum 90 days unless changed from the repository settings page.
+        default: '5'
+      compression-level:
+        description: >
+          The level of compression for Zlib to be applied to the artifact archive.
+          The value can range from 0 to 9:
+          - 0: No compression
+          - 1: Best speed
+          - 6: Default compression (same as GNU Gzip)
+          - 9: Best compression
+          Higher levels will result in better compression, but will take longer to complete.
+          For large files that are not easily compressed, a value of 0 is recommended for significantly faster uploads.
+        default: '6'
+      overwrite:
+        description: >
+          If true, an artifact with a matching name will be deleted before a new one is uploaded.
+          If false, the action will fail if an artifact for the given name already exists.
+          Does not fail if the artifact does not exist.
+        default: 'false'
+
+      artifact-name:
+        description: >
+          The name of the artifact to be uploaded.
+        required: false
+        default: "pypi-packages"
+
+jobs:
+  release-checks:
+    outputs:
+      publisher-name: ${{ steps.config-parser.outputs.publisher-name }}
+    runs-on: ubuntu-20.04
+    steps:
+     - name: Checkout Code
+       uses: actions/checkout@v4
+       with:
+         persist-credentials: false
+
+     - name: Setup Python
+       uses: actions/setup-python@v5
+       with:
+         python-version: "3.11"
+
+     - name: "Config parser"
+       id: config-parser
+       uses: ./read-config
+       with:
+        release-config: ${{ inputs.release-config }}
+
+     - name: "Checkout svn ${{ steps.config-parser.outputs.publisher-url }}"
+       id: "svn-checkout"
+       uses: ./init
+       with:
+         temp-dir: ${{ inputs.temp-dir }}
+         repo-url: ${{ steps.config-parser.outputs.publisher-url }}
+         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
+
+     - name: "Svn check"
+       id: "svn-check"
+       uses: ./svn
+       with:
+        svn-config: ${{ steps.config-parser.outputs.checks-svn }}
+        temp-dir: ${{ inputs.temp-dir }}
+        repo-path: ${{ steps.config-parser.outputs.publisher-path }}
+
+     - name: "Checksum check"
+       id: "checksum-check"
+       uses: ./checksum
+       with:
+        checksum-config: ${{ steps.config-parser.outputs.checks-checksum }}
+        temp-dir: ${{ inputs.temp-dir }}
+        repo-path: ${{ steps.config-parser.outputs.publisher-path }}
+
+     - name: "Signature check"
+       id: "signature-check"
+       uses: ./signature
+       with:
+        signature-config: ${{ steps.config-parser.outputs.checks-signature }}
+        temp-dir: ${{ inputs.temp-dir }}
+        repo-path: ${{ steps.config-parser.outputs.publisher-path }}
+
+     - name: "Find ${{ steps.config-parser.outputs.publisher-name }} packages"
+       id: "upload-artifacts"
+       uses: ./artifacts
+       with:
+        publish-config: ${{ steps.config-parser.outputs.checks-publish }}
+        temp-dir: ${{ inputs.temp-dir }}
+        mode: ${{ inputs.mode }}
+        publisher-name: ${{ steps.config-parser.outputs.publisher-name }}
+        repo-path: ${{ steps.config-parser.outputs.publisher-path }}
+        if-no-files-found: ${{ inputs.if-no-files-found }}
+        retention-days: ${{ inputs.retention-days }}
+        compression-level: ${{ inputs.compression-level }}
+        overwrite: ${{ inputs.overwrite }}
+        artifact-name: ${{ inputs.artifact-name }}
+
+
+  publish-to-pypi:
+    name: Publish svn packages to PyPI
+    runs-on: ubuntu-20.04
+    needs:
+      - release-checks
+    permissions:
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
+    steps:
+      - name: "Download release distributions for ${{ needs.release-checks.outputs.publisher-name }}"
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact-name }}
+          merge-multiple: true
+          path: ./dist
+
+      - name: "Publishing ${{ needs.release-checks.outputs.publisher-name }} to PyPI"
+        uses: pypa/gh-action-pypi-publish@release/v1
+        if: inputs.mode == 'RELEASE'
+        with:
+          packages-dir: "./dist"

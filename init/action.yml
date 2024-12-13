@@ -1,0 +1,56 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+name: "Svn checkout"
+description: "Checkout svn repo"
+inputs:
+  temp-dir:
+    description: >
+      Checkout directory of svn repo, this is used to checkout the svn repo.
+    required: false
+    default: "asf-dist"
+
+  repo-url:
+    description: >
+      URL of the svn repo ex: https://dist.apache.org/repos/dist/release/airflow/
+      this is used to checkout the svn repo.
+    required: true
+
+  repo-path:
+    description: >
+      Path to the svn repo. Lets say to publish the packages from the dev folder.
+      eg: svn repo structure is https://dist.apache.org/repos/dist/
+        dev/airflow/providers
+        release/airflow/providers
+      now to publish the packages from dev providers folder, set url and path like below in the release-config.yml
+      url: https://dist.apache.org/repos/dist/dev/airflow
+      repo-path: providers/
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: "Checkout svn repo ${{ inputs.repo-url }}"
+      shell: bash
+      env:
+        repo_url: ${{ inputs.repo-url }}
+      run: |
+        echo "Checking out SVN repo at $repo_url"
+        svn co $repo_url ./${{ inputs.temp-dir }}
+        echo "SVN repo checked out"
+        echo ls -lthr ./${{ inputs.temp-dir }}
