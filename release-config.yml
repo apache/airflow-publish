@@ -1,5 +1,5 @@
 project:
-  name: airflow-publish
+  name: airflow
   description: "Publish airflow packages to PyPI"
 publisher:
   name: airflow
