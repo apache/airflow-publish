@@ -19,6 +19,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "rich",
+#     "tabulate",
 # ]
 # ///
 
@@ -31,6 +32,7 @@ from functools import cached_property
 from typing import Any
 
 from rich.console import Console
+from tabulate import tabulate
 
 console = Console(width=400, color_system="standard")
 
@@ -142,8 +144,15 @@ class PublishPackagesFinder:
             else:
                 console.print("[blue]Following packages will be published to PyPI.[/]")
 
-            for package in self.final_packages_to_publish:
-                console.print(f"[blue]{package}[/]")
+            packages_tabulate_format = [[item] for item in self.final_packages_to_publish]
+
+            console.print(
+                tabulate(
+                    packages_tabulate_format,
+                    headers=["Packages"],
+                    tablefmt="grid"
+                )
+            )
         except Exception as e:
             console.print(f"[red]Error: {e}[/]")
             sys.exit(1)

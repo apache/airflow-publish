@@ -37,5 +37,5 @@ jobs:
           python-version: '3.11'
       - name: "Run tests"
         run: |
-            python3 -m pip install uv pytest rich python-gnupg requests pytest-unordered
+            python3 -m pip install -r .github/workflows/requirements.txt
             uv run pytest -vv

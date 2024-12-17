@@ -1,0 +1,7 @@
+uv
+pytest
+rich
+python-gnupg
+requests
+pytest-unordered
+tabulate
