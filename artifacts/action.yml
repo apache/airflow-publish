@@ -19,27 +19,15 @@ name: "Upload as artifacts"
 description: "Uploads the release distributions as artifacts"
 
 inputs:
-  publish-config:
+  artifact-config:
     description: >
-      Json config for publishing packages. it contains all the information required to publish the packages to PyPI. eg:
-      publish:
-        id: publish
-        description: "Publish provider packages to PyPI"
-        release-type: "RC_VERSION"
-        exclude_extensions:
+      Json config to find publishing packages. it contains all the information required to publish the packages to PyPI. eg:
+      artifact:
+        id: artifact
+        description: "Find artifacts to publish to PyPI"
+        exclude:
           - type: regex
             pattern: ".*(.asc|.sha512)$"
-        compare:
-          url: "https://dist.apache.org/repos/dist/release/airflow/"
-          path: "providers/"
-          package_names:
-           - type: regex
-             pattern: "(apache_airflow_providers.*?)(?=rc)"
-      
-      release-type: RC_VERSION It will consider packages from dev/ folder and publish to PyPI.
-      release-type: PYPI_VERSION It will consider packages from release/ folder and publish to PyPI.
-      compare: Section contains the release packages, which is used to compare the packages in dev folder and only matching 
-      packages will be published to PyPI.
     required: true
 
   temp-dir:
@@ -50,13 +38,14 @@ inputs:
 
   repo-path:
     description: >
-      Path to the svn repo. Lets say to publish the packages from the dev folder.
+      Path to the svn repo. Lets say to publish the packages from the dev pypi folder.
       eg: svn repo structure is https://dist.apache.org/repos/dist/
-        dev/airflow/providers
-        release/airflow/providers
-      now to publish the packages from dev providers folder, set url and path like below in the release-config.yml
+        dev/airflow/providers/pypi-rc/
+      
+      now to publish the packages from dev pypi providers folder, set url and path like below in the release-config.yml
+      
       url: https://dist.apache.org/repos/dist/dev/airflow
-      repo-path: providers/
+      repo-path: providers/pypi-rc/
     required: true
 
   mode:
@@ -119,13 +108,13 @@ runs:
       with:
         python-version: "3.11"
 
-    - name: "Move release distributions to dist directory"
+    - name: "Find artifacts to publish"
       shell: bash
-      id: move-release-dists
+      id: find-artifacts
       env:
-        PUBLISH_PACKAGES_CONFIG: ${{ inputs.publish-config }}
-        DIST_PATH: "${{ github.workspace }}/${{ inputs.temp-dir }}/dist"
+        ARTIFACTS_CONFIG: ${{ inputs.artifact-config }}
         MODE: ${{ inputs.mode }}
+        DIST_PATH: "${{ github.workspace }}/${{ inputs.temp-dir }}/dist"
       run: |
         python3 -m pip install uv
         uv run $GITHUB_ACTION_PATH/publish_packages_finder.py

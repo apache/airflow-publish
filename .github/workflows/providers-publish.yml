@@ -25,7 +25,11 @@ on:
       release-config:
         description: "Path to the release config file"
         required: true
-        default: "providers-release-config.yml"
+        default: "providers-rc-config.yml"
+        type: choice
+        options:
+          - "providers-rc-config.yml"
+          - "providers-pypi-config.yml"
       temp-dir:
         description: >
           Temporary directory to checkout the svn repo.
@@ -117,7 +121,7 @@ jobs:
        id: "upload-artifacts"
        uses: ./artifacts
        with:
-        publish-config: ${{ steps.config-parser.outputs.checks-publish }}
+        artifact-config: ${{ steps.config-parser.outputs.checks-artifact }}
         temp-dir: ${{ inputs.temp-dir }}
         mode: ${{ inputs.mode }}
         publisher-name: ${{ steps.config-parser.outputs.publisher-name }}

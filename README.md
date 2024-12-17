@@ -20,28 +20,25 @@ This action reads the release configuration file and writes output to `GITHUB_OU
 
 ```yaml
 project:
-  name: example-project
-  description: "Example project for publishing to PyPI"
+  name: airflow
+  description: "Publish rc provider packages to PyPI"
 publisher:
-  name: providers
-  url: "https://dist.apache.org/repos/dist/dev/airflow"
-  path: "providers/"
+  name: airflow
+  url: https://dist.apache.org/repos/dist/dev/airflow/
+  path: providers/pypi-rc/
 checks:
   svn:
     - id: extension
       description: "Validate svn package extensions"
       identifiers:
         - type: regex
-          pattern: ".*(py3-none-any.whl|tar.gz.sha512|tar.gz.asc|tar.gz|py3-none-any.whl.asc|py3-none-any.whl.sha512)$"
+          pattern: ".*(py3-none-any.whl|py3-none-any.whl.asc|py3-none-any.whl.sha512|tar.gz|tar.gz.asc|tar.gz.sha512)$"
 
     - id: package_name
       description: "Validate svn package names"
       identifiers:
         - type: regex
-          pattern: ".*(apache_airflow.*)$"
-
-        - type: regex
-          pattern: ".*(apache-airflow.*)$"
+          pattern: ".*(apache_airflow_providers.*)$"
 
   checksum:
     - id: checksum
@@ -54,19 +51,12 @@ checks:
       method: gpg
       keys: "https://dist.apache.org/repos/dist/release/airflow/KEYS"
 
-  publish:
-    id: publish
-    description: "Publish provider packages to PyPI"
-    release-type: "RC_VERSION"
-    exclude_extensions:
+  artifact:
+    id: artifact
+    description: "Find providers artifacts to publish to PyPI"
+    exclude:
       - type: regex
         pattern: ".*(.asc|.sha512)$"
-    compare:
-      url: "https://dist.apache.org/repos/dist/release/airflow/"
-      path: "providers/"
-      package_names:
-        - type: regex
-          pattern: "(apache_airflow_providers.*?)(?=rc)"
 ```
 #### Publisher
 This section contains the publisher details like `name`, `url`, and `path` to identify the repository in SVN.
@@ -227,35 +217,14 @@ This action uses the `publish` section from the `release-config.yml` to publish 
 
 ```yaml
 checks:
-  publish:
-    id: publish
-    description: "Publish provider packages to PyPI"
-    release-type: "RC_VERSION"
-    exclude_extensions:
+    artifact:
+    id: artifact
+    description: "Find providers artifacts to publish to PyPI"
+    exclude:
       - type: regex
         pattern: ".*(.asc|.sha512)$"
-    compare:
-      url: "https://dist.apache.org/repos/dist/release/airflow/"
-      path: "providers/"
-      package_names:
-       - type: regex
-         pattern: "(apache_airflow_providers.*?)(?=rc)"
 ```
-#### Release Configuration
-The `release-type` and `compare` sections are part of the validation and publishing configuration.
-
-##### `release-type`
-- **`RC_VERSION`**:  
-  It will consider packages from the `dev/` folder and publish to PyPI.  
-
-- **`PYPI_VERSION`**:  
-  It will consider packages from the `release/` folder and publish to PyPI.
-
 ---
-
-#### `compare`
-This section contains the release svn folder configuration, 
-it compares the packages in the `dev/` folder with release folder and only matching packages will be published to PyPI.
 
 ### Usage
 ```yaml
@@ -263,7 +232,7 @@ it compares the packages in the `dev/` folder with release folder and only match
   id: "upload-artifacts"
   uses: ./artifacts
   with:
-    publish-config: ${{ steps.config-parser.outputs.checks-publish }}
+    artifact-config: ${{ steps.config-parser.outputs.checks-artifact }}
     temp-dir: ${{ inputs.temp-dir }}
     mode: ${{ inputs.mode }}
     publisher-name: ${{ steps.config-parser.outputs.publisher-name }}
@@ -278,8 +247,8 @@ it compares the packages in the `dev/` folder with release folder and only match
 A sample github workflow file to use the composite actions is shown below:
 
 ```yaml
-name: Tes gh-svn-pypi-publisher
-description: "Publish to PyPI"
+name: Dry run publish airflow provider packages
+description: "Publish or verify svn artifacts"
 
 on:
   workflow_dispatch:
@@ -287,48 +256,36 @@ on:
       release-config:
         description: "Path to the release config file"
         required: true
-        default: "release-config.yml"
+        default: "providers-rc-config.yml"
+        type: choice
+        options:
+          - "providers-rc-config.yml"
+          - "providers-pypi-config.yml"
       temp-dir:
         description: >
-          Checkout directory of svn repo, this is used to checkout the svn repo.
+          Temporary directory to checkout the svn repo.
         required: false
         default: "asf-dist"
       mode:
-        description: "Mode to run the action"
+        description: >
+          Mode to run the action, set mode to 'RELEASE' to publish the packages to PyPI.
         required: false
         default: "VERIFY"
       if-no-files-found:
         description: >
-          The desired behavior if no files are found using the provided path.
-  
-          Available Options:
-            warn: Output a warning but do not fail the action
-            error: Fail the action with an error message
-            ignore: Do not output any warnings or errors, the action does not fail
+          upload artifacts action behavior if no files are found using the provided path.
         default: 'warn'
       retention-days:
         description: >
           Duration after which artifact will expire in days. 0 means using default retention.
-  
-          Minimum 1 day.
-          Maximum 90 days unless changed from the repository settings page.
         default: '5'
       compression-level:
         description: >
-          The level of compression for Zlib to be applied to the artifact archive.
-          The value can range from 0 to 9:
-          - 0: No compression
-          - 1: Best speed
-          - 6: Default compression (same as GNU Gzip)
-          - 9: Best compression
-          Higher levels will result in better compression, but will take longer to complete.
-          For large files that are not easily compressed, a value of 0 is recommended for significantly faster uploads.
+          The level of compression for artifact upload.
         default: '6'
       overwrite:
         description: >
-          If true, an artifact with a matching name will be deleted before a new one is uploaded.
-          If false, the action will fail if an artifact for the given name already exists.
-          Does not fail if the artifact does not exist.
+          Overwrite the existing artifact with the same name.
         default: 'false'
 
       artifact-name:
@@ -337,13 +294,11 @@ on:
         required: false
         default: "pypi-packages"
 
-
-
 jobs:
   release-checks:
     outputs:
       publisher-name: ${{ steps.config-parser.outputs.publisher-name }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     steps:
      - name: Checkout Code
        uses: actions/checkout@v4
@@ -351,7 +306,7 @@ jobs:
          persist-credentials: false
 
      - name: Setup Python
-       uses: actions/setup-python@v4
+       uses: actions/setup-python@v5
        with:
          python-version: "3.11"
 
@@ -397,7 +352,7 @@ jobs:
        id: "upload-artifacts"
        uses: ./artifacts
        with:
-        publish-config: ${{ steps.config-parser.outputs.checks-publish }}
+        artifact-config: ${{ steps.config-parser.outputs.checks-artifact }}
         temp-dir: ${{ inputs.temp-dir }}
         mode: ${{ inputs.mode }}
         publisher-name: ${{ steps.config-parser.outputs.publisher-name }}
@@ -406,15 +361,14 @@ jobs:
         retention-days: ${{ inputs.retention-days }}
         compression-level: ${{ inputs.compression-level }}
         overwrite: ${{ inputs.overwrite }}
-
+        artifact-name: ${{ inputs.artifact-name }}
 
   publish-to-pypi:
     name: Publish svn packages to PyPI
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
+    if: inputs.mode == 'RELEASE' && success()
     needs:
       - release-checks
-    environment:
-      name: test
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
@@ -428,7 +382,6 @@ jobs:
 
       - name: "Publishing ${{ needs.release-checks.outputs.publisher-name }} to PyPI"
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: inputs.mode == 'RELEASE'
         with:
           packages-dir: "./dist"
 ```

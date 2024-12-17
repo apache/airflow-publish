@@ -80,9 +80,7 @@ def test_validate_checksum(mock_file_digest):
     with open(temp_file.name, "wb") as temp_data:
         temp_data.write(b"some random data")
 
-    with open(
-        temp_dir.name + "/apache-airflow-2.10.3-source.tar.gz.sha512", "wb"
-    ) as temp_file:
+    with open(temp_dir.name + "/apache-airflow-2.10.3-source.tar.gz.sha512", "wb") as temp_file:
         temp_file.write(
             b"bbc759357eb1980e7f80ba0b016e9ed02120e26fcd008129b5777baf8086208c45e170e3c98cf35bd96a246d59484bde3220a897e5e6a7f688a69a40bcd451bd apache-airflow-2.10.3-source.tar.gz"
         )
@@ -111,9 +109,7 @@ def test_validate_checksum_invalid(mock_file_digest):
     with open(temp_file.name, "wb") as temp_data:
         temp_data.write(b"some random data")
 
-    with open(
-        temp_dir.name + "/apache-airflow-2.10.3-source.tar.gz.sha512", "wb"
-    ) as temp_file:
+    with open(temp_dir.name + "/apache-airflow-2.10.3-source.tar.gz.sha512", "wb") as temp_file:
         temp_file.write(
             b"bbc759357eb1980e7f80ba0b016e9ed02120e26fcd008129b5777baf8086208c45e170e3c98cf35bd96a246d59484bde3220a897e5e6a7f688a69a40bcd451bd apache-airflow-2.10.3-source.tar.gz"
         )

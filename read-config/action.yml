@@ -46,8 +46,8 @@ outputs:
   checks-signature:
     value: ${{ steps.config-parser.outputs.checks-signature }}
     description: "Config for signature checks"
-  checks-publish:
-    value: ${{ steps.config-parser.outputs.checks-publish }}
+  checks-artifact:
+    value: ${{ steps.config-parser.outputs.checks-artifact }}
     description: "Config for finding eligible packages and publishing packages pypi"
 
 runs:

@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import json
 import os.path
 import tempfile
 
@@ -78,312 +79,87 @@ class TestPublishPackagesFinder:
         )
         assert after_exclude_packages == unordered(expected)
 
-    #
-    @pytest.mark.parametrize(
-        "packages, exclude_config, expected",
-        [
-            pytest.param(
-                [
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.sha512",
-                ],
-                [
-                    {
-                        "type": "regex",
-                        "pattern": r".*(.asc|.sha512)$",
-                    },
-                ],
-                [
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz",
-                ],
-                id="return_rc_packages",
-            ),
-            pytest.param(
-                [
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.sha512",
-                ],
-                [
-                    {
-                        "type": "regex",
-                        "pattern": r".*(.asc|.sha512)$",
-                    },
-                ],
-                [],
-                id="no_rc_packages",
-            ),
-        ],
-    )
-    def test_filter_rc_packages_to_publish(self, packages, exclude_config, expected):
+    def test_dev_svn_files(self):
         publish_packages_finder = PublishPackagesFinder()
-        publish_packages_finder.final_packages_to_publish.clear()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            files = [
+                "file1.tar.gz",
+                "file2.tar.gz.asc",
+                "file3.py3-none-any.whl.sha512",
+            ]
+            write_data(files, temp_dir)
+            os.chdir(temp_dir)
+            assert publish_packages_finder.dev_svn_files == unordered(files)
 
-        # Write some files to temporary dev svn folder
-        temp_dev_svn_folder = tempfile.TemporaryDirectory()
-        os.chdir(temp_dev_svn_folder.name)
-        write_data(packages, temp_dev_svn_folder.name)
-        publish_packages_finder.filter_rc_packages_to_publish(
-            exclude_extensions_config=exclude_config
-        )
-
-        assert publish_packages_finder.final_packages_to_publish == unordered(expected)
+    def test_dev_svn_files_empty(self):
+        publish_packages_finder = PublishPackagesFinder()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            os.chdir(temp_dir)
+            with pytest.raises(SystemExit):
+                publish_packages_finder.dev_svn_files()
 
     @pytest.mark.parametrize(
-        "packages, package_name_config, expected",
+        "file, pattern, expected",
         [
             pytest.param(
-                [
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz.asc",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl.asc",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl.sha512",
-                ],
-                [
-                    {
-                        "type": "regex",
-                        "pattern": "(apache_airflow_providers.*?)(?=rc)",
-                    },
-                ],
-                [
-                    "apache_airflow_providers_amazon-9.1.0",
-                    "apache_airflow_providers_airbyte-10.1.0",
-                ],
-                id="return_package_name_without_rc",
+                "apache_airflow_providers_amazon-9.1.0rc1.tar.gz",
+                ".*(.asc|.sha512)$",
+                False,
             ),
             pytest.param(
-                [
-                    "apache-superset-incubating-0.34.0rc2-source.tar.gz",
-                    "apache-superset-incubating-0.34.0rc2-source.tar.gz.asc",
-                    "apache-superset-incubating-0.34.0rc2-source.tar.gz.sha512",
-                ],
-                [
-                    {
-                        "type": "regex",
-                        "pattern": "(apache-superset-incubating.*?)(?=rc)",
-                    },
-                ],
-                [
-                    "apache-superset-incubating-0.34.0",
-                ],
-                id="return_superset_package_name_without_rc",
+                "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.asc",
+                ".*(.asc|.sha512)$",
+                True,
             ),
+            pytest.param(
+                "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl",
+                ".*(.asc|.sha512)$",
+                False,
+            ),
+            pytest.param(
+                "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.sha512",
+                ".*(.asc|.sha512)$",
+                True,
+            ),
+            pytest.param("apache_airflow-2.10.4.tar.gz.asc", "(apache_airflow-.*?)$", True),
         ],
     )
-    def test_extract_package_names(self, packages, package_name_config, expected):
+    def test_is_matched(self, file, pattern, expected):
+        """
+        Test is_matched method of PublishPackagesFinder, which checks if the file is matched with the pattern
+
+        """
         publish_packages_finder = PublishPackagesFinder()
-        extracted_names = publish_packages_finder.extract_package_names(
-            package_name_config=package_name_config, lookup_packages=packages
-        )
-        assert extracted_names == unordered(expected)
+        assert publish_packages_finder.is_matched(file, pattern) == expected
 
-    @pytest.mark.parametrize(
-        "compare_config, temp_release_dir_files, temp_dev_svn_files, expected",
-        [
-            pytest.param(
-                {
-                    "url": "https://dist.apache.org/repos/dist/release/airflow/",
-                    "path": "airflow/providers/",
-                    "package_names": [
-                        {
-                            "type": "regex",
-                            "pattern": "(apache_airflow_providers.*?)(?=rc)",
-                        }
-                    ],
-                },
-                [
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz.asc",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl.sha512",
-                ],
-                [
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz.asc",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl.asc",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl.sha512",
-                ],
-                [
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz.asc",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl.sha512",
-                ],
-                id="find_matched_packages_between_dev_and_release",
-            ),
-            pytest.param(
-                {
-                    "url": "https://dist.apache.org/repos/dist/release/airflow/",
-                    "path": "airflow/providers/",
-                    "package_names": [
-                        {
-                            "type": "regex",
-                            "pattern": "(apache_airflow_providers.*?)(?=rc)",
-                        }
-                    ],
-                },
-                [
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz.asc",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl.sha512",
-                ],
-                [
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.sha512",
-                ],
-                [
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.sha512",
-                ],
-                id="find_matched_packages_between_dev_and_release_should_return_one_provider",
-            ),
-        ],
-    )
-    def test_find_matched_packages_between_dev_and_release(
-        self,
-        compare_config,
-        temp_release_dir_files,
-        temp_dev_svn_files,
-        expected,
-    ):
+    def test_exclude_config(self):
         publish_packages_finder = PublishPackagesFinder()
-
-        # Write some files to temporary release folder
-        write_data(
-            temp_release_dir_files,
-            os.path.join(
-                publish_packages_finder.svn_dist_release_dir, compare_config.get("path")
-            ),
-        )
-
-        # Write some files to temporary dev svn folder
-        temp_dev_svn_folder = tempfile.TemporaryDirectory()
-        os.chdir(temp_dev_svn_folder.name)
-        write_data(temp_dev_svn_files, temp_dev_svn_folder.name)
-
-        publish_packages_finder.find_matched_packages_between_dev_and_release(
-            compare_config
-        )
-        assert (
-            publish_packages_finder.matched_packages_between_dev_and_release
-            == unordered(expected)
-        )
-
-    def test_find_matched_packages_between_dev_and_release_when_no_match_should_fail(
-        self,
-    ):
-        publish_packages_finder = PublishPackagesFinder()
-        files = [
-            "apache_airflow_providers_amazon-9.1.0.tar.gz",
-            "apache_airflow_providers_amazon-9.1.0.tar.gz.asc",
-            "apache_airflow_providers_amazon-9.1.0.tar.gz.sha512",
+        publish_packages_finder.artifacts_config = {
+            "exclude": [{"type": "regex", "pattern": r".*(tar.gz.asc|py3-none-any.whl.sha512)$"}]
+        }
+        assert publish_packages_finder.exclude_config == [
+            {"type": "regex", "pattern": r".*(tar.gz.asc|py3-none-any.whl.sha512)$"}
         ]
-        write_data(files, publish_packages_finder.svn_dist_release_dir)
 
-        temp_dev_svn_folder = tempfile.TemporaryDirectory()
-        os.chdir(temp_dev_svn_folder.name)
-        write_data(
-            [
-                "apache_airflow_providers-airbyte-9.1.0.tar.gz.sha512",
-            ],
-            temp_dev_svn_folder.name,
-        )
+    def test_exclude_config_empty(self):
+        publish_packages_finder = PublishPackagesFinder()
+        publish_packages_finder.artifacts_config = {}
+        assert publish_packages_finder.exclude_config is None
 
+    def test_exclude_config_empty_list(self):
+        publish_packages_finder = PublishPackagesFinder()
+        publish_packages_finder.artifacts_config = {"exclude": []}
+        assert publish_packages_finder.exclude_config == []
+
+    def test_run_should_fail_if_no_packages_found(self):
+        publish_packages_finder = PublishPackagesFinder()
         with pytest.raises(SystemExit):
-            publish_packages_finder.find_matched_packages_between_dev_and_release(
-                compare_config={
-                    "url": "https://someurl/",
-                    "path": "airflow/providers/",
-                    "package_names": [
-                        {
-                            "type": "regex",
-                            "pattern": "(apache_airflow_providers.*?)(?=rc)",
-                        }
-                    ],
-                }
-            )
+            publish_packages_finder.run()
 
     @pytest.mark.parametrize(
-        "compare_config, temp_release_dir_files, temp_dev_svn_files, expected",
+        "temp_packages, exclude_config, expected",
         [
             pytest.param(
-                {
-                    "url": "https://dist.apache.org/repos/dist/release/airflow/",
-                    "path": "airflow/providers/",
-                    "package_names": [
-                        {
-                            "type": "regex",
-                            "pattern": "(apache_airflow_providers.*?)(?=rc)",
-                        }
-                    ],
-                },
-                [
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.asc",
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz.asc",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl.asc",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl.sha512",
-                ],
                 [
                     "apache_airflow_providers_amazon-9.1.0rc1.tar.gz",
                     "apache_airflow_providers_amazon-9.1.0rc1.tar.gz.asc",
@@ -391,48 +167,50 @@ class TestPublishPackagesFinder:
                     "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl",
                     "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.asc",
                     "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz.asc",
-                    "apache_airflow_providers_airbyte-10.1.0rc1.tar.gz.sha512",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl.asc",
-                    "apache_airflow_providers_airbyte-10.1.0rc1-py3-none-any.whl.sha512",
+                ],
+                [{"type": "regex", "pattern": ".*(.asc|.sha512)$"}],
+                [
+                    "apache_airflow_providers_amazon-9.1.0rc1.tar.gz",
+                    "apache_airflow_providers_amazon-9.1.0rc1-py3-none-any.whl",
+                ],
+                id="exclude_asc_sha512",
+            ),
+            pytest.param(
+                [
+                    "apache-airflow-2.10.4-source.tar.gz",
+                    "apache-airflow-2.10.4-source.tar.gz.asc",
+                    "apache-airflow-2.10.4-source.tar.gz.sha512",
+                    "apache_airflow-2.10.4-py3-none-any.whl",
+                    "apache_airflow-2.10.4-py3-none-any.whl.asc",
+                    "apache_airflow-2.10.4-py3-none-any.whl.sha512",
+                    "apache_airflow-2.10.4.tar.gz",
+                    "apache_airflow-2.10.4.tar.gz.asc",
+                    "apache_airflow-2.10.4.tar.gz.sha512",
                 ],
                 [
-                    "apache_airflow_providers_amazon-9.1.0.tar.gz",
-                    "apache_airflow_providers_amazon-9.1.0-py3-none-any.whl",
-                    "apache_airflow_providers_airbyte-10.1.0.tar.gz",
-                    "apache_airflow_providers_airbyte-10.1.0-py3-none-any.whl",
+                    {"type": "regex", "pattern": ".*(.asc|.sha512)$"},
+                    {"type": "regex", "pattern": "(apache-airflow-.*?)$"},
                 ],
-                id="find_matched_packages_between_dev_and_release",
+                [
+                    "apache_airflow-2.10.4.tar.gz",
+                    "apache_airflow-2.10.4-py3-none-any.whl",
+                ],
             ),
         ],
     )
-    def test_filter_pypi_version_packages_to_publish(
-        self, compare_config, temp_release_dir_files, temp_dev_svn_files, expected
-    ):
-        # Test compare the dev and release packages and filter the packages to publish
-        publish_packages_finder = PublishPackagesFinder()
-        publish_packages_finder.final_packages_to_publish.clear()
-
-        # Write some files to temporary dev svn folder
-        temp_dev_svn_folder = tempfile.TemporaryDirectory()
-        os.chdir(temp_dev_svn_folder.name)
-        write_data(temp_dev_svn_files, temp_dev_svn_folder.name)
-
-        dist_folder = tempfile.TemporaryDirectory()
-        os.environ["DIST_PATH"] = dist_folder.name
-
-        # Create temporary release folder files
-        write_data(temp_release_dir_files, publish_packages_finder.svn_dist_release_dir)
-
-        publish_packages_finder.filter_pypi_version_packages_to_publish(
-            compare_config=compare_config,
-            extension_exclude_config=[
-                {
-                    "type": "regex",
-                    "pattern": r".*(.asc|.sha512)$",
-                }
-            ],
+    def test_run_should_find_packages(self, monkeypatch, temp_packages, exclude_config, expected):
+        monkeypatch.setenv(
+            "ARTIFACTS_CONFIG",
+            json.dumps(
+                {"id": "artifact", "description": "Find publish packages to PyPI", "exclude": exclude_config}
+            ),
         )
-        assert publish_packages_finder.final_packages_to_publish == unordered(expected)
+        dist_folder = tempfile.TemporaryDirectory()
+        monkeypatch.setenv("DIST_PATH", dist_folder.name)
+        publish_packages_finder = PublishPackagesFinder()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            write_data(temp_packages, temp_dir)
+            os.chdir(temp_dir)
+            publish_packages_finder.run()
+            assert publish_packages_finder.final_packages_to_publish == unordered(expected)
+            assert os.listdir(dist_folder.name) == unordered(expected)
