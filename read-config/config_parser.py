@@ -109,9 +109,5 @@ if __name__ == "__main__":
     console.print("")
     console.print("[blue]Starting validations for:[/]")
     console.print(f"[blue]  Project: {yml_config_data.get('project').get('name')}[/]")
-    console.print(
-        f"[blue]  Description: {yml_config_data.get('project').get('description')}[/]"
-    )
-    console.print(
-        f"[blue]  Publisher: {yml_config_data.get('publisher').get('name')}[/]"
-    )
+    console.print(f"[blue]  Description: {yml_config_data.get('project').get('description')}[/]")
+    console.print(f"[blue]  Publisher: {yml_config_data.get('publisher').get('name')}[/]")

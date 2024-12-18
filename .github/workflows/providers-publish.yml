@@ -16,7 +16,7 @@
 # under the License.
 #
 ---
-name: Dry run publish airflow packages
+name: Dry run publish airflow provider packages
 description: "Publish or verify svn artifacts"
 
 on:
@@ -25,11 +25,11 @@ on:
       release-config:
         description: "Path to the release config file"
         required: true
-        default: "airflow-rc-config.yml"
+        default: "providers-rc-config.yml"
         type: choice
         options:
-          - "airflow-rc-config.yml"
-          - "airflow-pypi-config.yml"
+          - "providers-rc-config.yml"
+          - "providers-pypi-config.yml"
       temp-dir:
         description: >
           Temporary directory to checkout the svn repo.
@@ -56,6 +56,7 @@ on:
         description: >
           Overwrite the existing artifact with the same name.
         default: 'false'
+
       artifact-name:
         description: >
           The name of the artifact to be uploaded.
@@ -130,7 +131,6 @@ jobs:
         compression-level: ${{ inputs.compression-level }}
         overwrite: ${{ inputs.overwrite }}
         artifact-name: ${{ inputs.artifact-name }}
-
 
   publish-to-pypi:
     name: Publish svn packages to PyPI

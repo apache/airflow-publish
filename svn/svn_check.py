@@ -90,9 +90,7 @@ def check_files_with_identifiers(
 
 
 if __name__ == "__main__":
-    svn_check_config: list[dict[str, Any]] = json.loads(
-        os.environ.get("SVN_CHECK_CONFIG")
-    )
+    svn_check_config: list[dict[str, Any]] = json.loads(os.environ.get("SVN_CHECK_CONFIG"))
 
     if not svn_check_config:
         console.print(
@@ -102,16 +100,12 @@ if __name__ == "__main__":
         sys.exit(1)
 
     if not svn_files:
-        console.print(
-            f"[red]Error: No files found in SVN directory at {os.environ.get('REPO_PATH')}[/]"
-        )
+        console.print(f"[red]Error: No files found in SVN directory at {os.environ.get('REPO_PATH')}[/]")
         sys.exit(1)
 
     for check in svn_check_config:
         console.print(f"[blue]{check.get('description')}[/]")
-        check_files_with_identifiers(
-            check.get("identifiers"), svn_files, check.get("id")
-        )
+        check_files_with_identifiers(check.get("identifiers"), svn_files, check.get("id"))
 
     exit_code = 0
 

@@ -14,28 +14,30 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
 ---
-name: Unit test action scripts
-on:
-  workflow_dispatch:
-  pull_request:
-    branches:
-      - main
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Checkout ${{ github.ref }} ( ${{ github.sha }} )"
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: "Run tests"
-        run: |
-            python3 -m pip install -r .github/workflows/requirements.txt
-            uv run pytest -vv
+default_stages: [pre-commit, pre-push]
+default_language_version:
+  python: python3
+  node: 22.2.0
+minimum_pre_commit_version: '3.2.0'
+repos:
+  - repo: https://github.com/asottile/blacken-docs
+    rev: 1.19.1
+    hooks:
+      - id: blacken-docs
+        name: Run black on docs
+        args:
+          - --line-length=110
+        alias: blacken-docs
+        additional_dependencies: [black==24.10.0]
+  - repo: local
+    hooks:
+      - id: ruff
+        name: Run 'ruff' for extremely fast Python linting
+        description: "Run 'ruff' for extremely fast Python linting"
+        entry: ruff check --force-exclude
+        language: python
+        types_or: [ python, pyi ]
+        args: [ --fix ]
+        require_serial: true
+        additional_dependencies: [ "ruff==0.8.1" ]

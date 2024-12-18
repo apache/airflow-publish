@@ -124,7 +124,7 @@
             ]
           }
         },
-        "publish": {
+        "artifact": {
           "type": "object",
           "properties": {
             "id": {
@@ -133,10 +133,7 @@
             "description": {
               "type": "string"
             },
-            "release-type": {
-              "type": "string"
-            },
-            "exclude_extensions": {
+            "exclude": {
               "type": "array",
               "items": {
                 "type": "object",
@@ -153,54 +150,18 @@
                   "type"
                 ]
               }
-            },
-            "compare": {
-              "type": "object",
-              "properties": {
-                "url": {
-                  "type": "string"
-                },
-                "path": {
-                  "type": "string"
-                },
-                "package_names": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "type": {
-                        "type": "string"
-                      },
-                      "pattern": {
-                        "type": "string"
-                      }
-                    },
-                    "required": [
-                      "pattern",
-                      "type"
-                    ]
-                  }
-                }
-              },
-              "required": [
-                "package_names",
-                "path",
-                "url"
-              ]
             }
           },
           "required": [
-            "compare",
             "description",
-            "exclude_extensions",
-            "id",
-            "release-type"
+            "exclude",
+            "id"
           ]
         }
       },
       "required": [
+        "artifact",
         "checksum",
-        "publish",
         "signature",
         "svn"
       ]
