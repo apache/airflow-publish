@@ -83,6 +83,25 @@ class PublishPackagesFinder:
     def exclude_config(self):
         return self.artifacts_config.get("exclude")
 
+    @staticmethod
+    def print_table_format(packages: list[str], headers: list[str]):
+        """
+        Print the packages in tabulate format
+
+        :param packages: list of packages
+        :param headers: headers for the table
+        :return:
+        """
+        packages_tabulate_format = [[package] for package in packages]
+
+        console.print(
+            tabulate(
+                packages_tabulate_format,
+                headers=headers,
+                tablefmt="grid"
+            )
+        )
+
     def exclude_packages_to_publish(
         self, packages: list[str], exclude_config: list[dict[str, Any]]
     ) -> list[str]:
@@ -105,7 +124,7 @@ class PublishPackagesFinder:
                 ]
         if exclude_packages:
             console.print("[blue]Following packages excluded: [/]")
-            console.print(f"[blue]{exclude_packages}[/]")
+            self.print_table_format(list(exclude_packages), ["Packages"])
             console.print("\n")
 
         return list(set(packages) - exclude_packages)
@@ -144,15 +163,8 @@ class PublishPackagesFinder:
             else:
                 console.print("[blue]Following packages will be published to PyPI.[/]")
 
-            packages_tabulate_format = [[item] for item in self.final_packages_to_publish]
+            self.print_table_format(self.final_packages_to_publish, ["Packages"])
 
-            console.print(
-                tabulate(
-                    packages_tabulate_format,
-                    headers=["Packages"],
-                    tablefmt="grid"
-                )
-            )
         except Exception as e:
             console.print(f"[red]Error: {e}[/]")
             sys.exit(1)
