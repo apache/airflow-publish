@@ -16,7 +16,7 @@
 # under the License.
 #
 ---
-name: Dry run publish airflow provider packages
+name: Publish providers distribution 📦 to Test PyPI
 description: "Publish or verify svn artifacts"
 
 on:
@@ -30,15 +30,38 @@ on:
         options:
           - "providers-rc-config.yml"
           - "providers-pypi-config.yml"
+      temp-dir:
+        description: >
+          Temporary directory to checkout the svn repo.
+        required: false
+        default: "asf-dist"
       mode:
         description: >
           Mode to run the action, set mode to 'RELEASE' to publish the packages to PyPI.
         required: false
-        type: choice
         default: "VERIFY"
-        options:
-          - "VERIFY"
-          - "RELEASE"
+      if-no-files-found:
+        description: >
+          upload artifacts action behavior if no files are found using the provided path.
+        default: 'warn'
+      retention-days:
+        description: >
+          Duration after which artifact will expire in days. 0 means using default retention.
+        default: '5'
+      compression-level:
+        description: >
+          The level of compression for artifact upload.
+        default: '6'
+      overwrite:
+        description: >
+          Overwrite the existing artifact with the same name.
+        default: 'false'
+
+      artifact-name:
+        description: >
+          The name of the artifact to be uploaded.
+        required: false
+        default: "pypi-packages"
 
 jobs:
   release-checks:
@@ -63,52 +86,51 @@ jobs:
         release-config: ${{ inputs.release-config }}
 
      - name: "Checkout svn ${{ steps.config-parser.outputs.publisher-url }}"
-       id: "svn-checkout"
+       id: svn-checkout
        uses: ./init
        with:
-         temp-dir: asf-dist
+         temp-dir: ${{ inputs.temp-dir }}
          repo-url: ${{ steps.config-parser.outputs.publisher-url }}
          repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Svn check"
-       id: "svn-check"
+       id: svn-check
        uses: ./svn
        with:
         svn-config: ${{ steps.config-parser.outputs.checks-svn }}
-        temp-dir: asf-dist
+        temp-dir: ${{ inputs.temp-dir }}
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Checksum check"
-       id: "checksum-check"
+       id: checksum-check
        uses: ./checksum
        with:
         checksum-config: ${{ steps.config-parser.outputs.checks-checksum }}
-        temp-dir: asf-dist
+        temp-dir: ${{ inputs.temp-dir }}
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Signature check"
-       id: "signature-check"
+       id: signature-check
        uses: ./signature
        with:
         signature-config: ${{ steps.config-parser.outputs.checks-signature }}
-        temp-dir: asf-dist
+        temp-dir: ${{ inputs.temp-dir }}
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Find ${{ steps.config-parser.outputs.publisher-name }} packages"
-       id: "upload-artifacts"
+       id: upload-artifacts
        uses: ./artifacts
        with:
         artifact-config: ${{ steps.config-parser.outputs.checks-artifact }}
-        temp-dir: asf-dist
+        temp-dir: ${{ inputs.temp-dir }}
         mode: ${{ inputs.mode }}
         publisher-name: ${{ steps.config-parser.outputs.publisher-name }}
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
-        if-no-files-found: warn
-        retention-days: '5'
-        compression-level: '6'
-        overwrite: false
-        artifact-name: pypi-packages
-
+        if-no-files-found: ${{ inputs.if-no-files-found }}
+        retention-days: ${{ inputs.retention-days }}
+        compression-level: ${{ inputs.compression-level }}
+        overwrite: ${{ inputs.overwrite }}
+        artifact-name: ${{ inputs.artifact-name }}
 
   publish-to-pypi:
     name: Publish svn packages to PyPI
@@ -123,13 +145,14 @@ jobs:
       - name: "Download release distributions for ${{ needs.release-checks.outputs.publisher-name }}"
         uses: actions/download-artifact@v4
         with:
-          name: pypi-packages
+          name: ${{ inputs.artifact-name }}
           merge-multiple: true
           path: ./dist
 
-      - name: "Publishing ${{ needs.release-checks.outputs.publisher-name }} distribution 📦 to PyPI"
+      - name: "Publishing ${{ needs.release-checks.outputs.publisher-name }} distribution 📦 to Test PyPI"
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: "./dist"
+          packages-dir: ./dist
+          repository-url: https://test.pypi.org/legacy/
           skip-existing: true
           attestations: true
