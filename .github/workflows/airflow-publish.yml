@@ -30,37 +30,15 @@ on:
         options:
           - "airflow-rc-config.yml"
           - "airflow-pypi-config.yml"
-      temp-dir:
-        description: >
-          Temporary directory to checkout the svn repo.
-        required: false
-        default: "asf-dist"
       mode:
         description: >
           Mode to run the action, set mode to 'RELEASE' to publish the packages to PyPI.
         required: false
+        type: choice
         default: "VERIFY"
-      if-no-files-found:
-        description: >
-          upload artifacts action behavior if no files are found using the provided path.
-        default: 'warn'
-      retention-days:
-        description: >
-          Duration after which artifact will expire in days. 0 means using default retention.
-        default: '5'
-      compression-level:
-        description: >
-          The level of compression for artifact upload.
-        default: '6'
-      overwrite:
-        description: >
-          Overwrite the existing artifact with the same name.
-        default: 'false'
-      artifact-name:
-        description: >
-          The name of the artifact to be uploaded.
-        required: false
-        default: "pypi-packages"
+        options:
+          - "VERIFY"
+          - "RELEASE"
 
 jobs:
   release-checks:
@@ -88,7 +66,7 @@ jobs:
        id: "svn-checkout"
        uses: ./init
        with:
-         temp-dir: ${{ inputs.temp-dir }}
+         temp-dir: asf-dist
          repo-url: ${{ steps.config-parser.outputs.publisher-url }}
          repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
@@ -97,7 +75,7 @@ jobs:
        uses: ./svn
        with:
         svn-config: ${{ steps.config-parser.outputs.checks-svn }}
-        temp-dir: ${{ inputs.temp-dir }}
+        temp-dir: asf-dist
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Checksum check"
@@ -105,7 +83,7 @@ jobs:
        uses: ./checksum
        with:
         checksum-config: ${{ steps.config-parser.outputs.checks-checksum }}
-        temp-dir: ${{ inputs.temp-dir }}
+        temp-dir: asf-dist
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Signature check"
@@ -113,7 +91,7 @@ jobs:
        uses: ./signature
        with:
         signature-config: ${{ steps.config-parser.outputs.checks-signature }}
-        temp-dir: ${{ inputs.temp-dir }}
+        temp-dir: asf-dist
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Find ${{ steps.config-parser.outputs.publisher-name }} packages"
@@ -121,15 +99,15 @@ jobs:
        uses: ./artifacts
        with:
         artifact-config: ${{ steps.config-parser.outputs.checks-artifact }}
-        temp-dir: ${{ inputs.temp-dir }}
+        temp-dir: asf-dist
         mode: ${{ inputs.mode }}
         publisher-name: ${{ steps.config-parser.outputs.publisher-name }}
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
-        if-no-files-found: ${{ inputs.if-no-files-found }}
-        retention-days: ${{ inputs.retention-days }}
-        compression-level: ${{ inputs.compression-level }}
-        overwrite: ${{ inputs.overwrite }}
-        artifact-name: ${{ inputs.artifact-name }}
+        if-no-files-found: warn
+        retention-days: '5'
+        compression-level: '6'
+        overwrite: false
+        artifact-name: pypi-packages
 
 
   publish-to-pypi:
@@ -145,11 +123,11 @@ jobs:
       - name: "Download release distributions for ${{ needs.release-checks.outputs.publisher-name }}"
         uses: actions/download-artifact@v4
         with:
-          name: ${{ inputs.artifact-name }}
+          name: pypi-packages
           merge-multiple: true
           path: ./dist
 
-      - name: "Publishing ${{ needs.release-checks.outputs.publisher-name }} to PyPI"
+      - name: "Publishing ${{ needs.release-checks.outputs.publisher-name }} distribution 📦 to PyPI"
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: "./dist"
