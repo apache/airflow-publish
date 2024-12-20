@@ -16,7 +16,7 @@
 # under the License.
 #
 ---
-name: Dry run publish airflow provider packages
+name: Publish providers distribution 📦 to Test PyPI
 description: "Publish or verify svn artifacts"
 
 on:
@@ -24,21 +24,21 @@ on:
     inputs:
       release-config:
         description: "Path to the release config file"
-        required: true
-        default: "providers-rc-config.yml"
+        required: false
         type: choice
         options:
           - "providers-rc-config.yml"
           - "providers-pypi-config.yml"
+        default: "providers-rc-config.yml"
       mode:
         description: >
           Mode to run the action, set mode to 'RELEASE' to publish the packages to PyPI.
         required: false
         type: choice
-        default: "VERIFY"
         options:
           - "VERIFY"
           - "RELEASE"
+        default: "VERIFY"
 
 jobs:
   release-checks:
@@ -63,7 +63,7 @@ jobs:
         release-config: ${{ inputs.release-config }}
 
      - name: "Checkout svn ${{ steps.config-parser.outputs.publisher-url }}"
-       id: "svn-checkout"
+       id: svn-checkout
        uses: ./init
        with:
          temp-dir: asf-dist
@@ -71,7 +71,7 @@ jobs:
          repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Svn check"
-       id: "svn-check"
+       id: svn-check
        uses: ./svn
        with:
         svn-config: ${{ steps.config-parser.outputs.checks-svn }}
@@ -79,7 +79,7 @@ jobs:
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Checksum check"
-       id: "checksum-check"
+       id: checksum-check
        uses: ./checksum
        with:
         checksum-config: ${{ steps.config-parser.outputs.checks-checksum }}
@@ -87,7 +87,7 @@ jobs:
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Signature check"
-       id: "signature-check"
+       id: signature-check
        uses: ./signature
        with:
         signature-config: ${{ steps.config-parser.outputs.checks-signature }}
@@ -95,7 +95,7 @@ jobs:
         repo-path: ${{ steps.config-parser.outputs.publisher-path }}
 
      - name: "Find ${{ steps.config-parser.outputs.publisher-name }} packages"
-       id: "upload-artifacts"
+       id: upload-artifacts
        uses: ./artifacts
        with:
         artifact-config: ${{ steps.config-parser.outputs.checks-artifact }}
@@ -106,9 +106,8 @@ jobs:
         if-no-files-found: warn
         retention-days: '5'
         compression-level: '6'
-        overwrite: false
+        overwrite: 'false'
         artifact-name: pypi-packages
-
 
   publish-to-pypi:
     name: Publish svn packages to PyPI
@@ -127,9 +126,10 @@ jobs:
           merge-multiple: true
           path: ./dist
 
-      - name: "Publishing ${{ needs.release-checks.outputs.publisher-name }} distribution 📦 to PyPI"
+      - name: "Publishing ${{ needs.release-checks.outputs.publisher-name }} distribution 📦 to Test PyPI"
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: "./dist"
+          packages-dir: ./dist
+          repository-url: https://test.pypi.org/legacy/
           skip-existing: true
           attestations: true
