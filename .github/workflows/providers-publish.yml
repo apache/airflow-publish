@@ -133,3 +133,9 @@ jobs:
           packages-dir: "./dist"
           skip-existing: true
           attestations: true
+
+      - name: Publish summary
+        uses: ./summary
+        with:
+          dist-file-path: "${{ github.workspace }}/dist"
+          publisher-name: ${{ needs.release-checks.outputs.publisher-name }}
