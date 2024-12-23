@@ -36,7 +36,8 @@ def create_pypi_package_index_url(packages: list[str], url: str):
     for wheel_file in wheel_files:
         parsed_wheel = utils.parse_wheel_filename(wheel_file)
 
-        # Create a tuple of package name and its URL (e.g. apache-airflow-providers-amazon, https://pypi.org/project/apache-airflow-providers-amazon/9.2.0rc2)
+        # Create a tuple of package name and its URL eg:
+        # (apache-airflow-providers-amazon, https://pypi.org/project/apache-airflow-providers-amazon/9.2.0rc2)
 
         pypi_package_urls.append((parsed_wheel[0], f"{url}{parsed_wheel[0]}/{parsed_wheel[1]}"))
     pypi_package_urls.sort()
