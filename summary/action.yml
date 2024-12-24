@@ -1,0 +1,63 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+name: Action summary
+description: Summary of the executed action in the workflow
+
+inputs:
+  dist-file-path:
+    description: > 
+        Path to the file which contains the distribution files to be published.
+    required: true
+
+  summary-type:
+    description: >
+        Type of the summary to be generated. The default type is 'publish' which will generate the summary for the release.
+    required: false
+    default: "publish"
+
+  pypi-index-url:
+    description: >
+        PyPI index URL of the published packages.
+    required: false
+    default: "https://pypi.org/project/"
+
+  publisher-name:
+    description: >
+        Name of the publisher eg: Providers, Airflow
+    required: false
+    default: "Packages"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Generate summary
+      shell: bash
+      id: generate-summary
+      env:
+        DIST_FILE_PATH: ${{ inputs.dist-file-path }}
+        SUMMARY_TYPE: ${{ inputs.summary-type }}
+        PYPI_INDEX_URL: ${{ inputs.pypi-index-url }}
+        PUBLISHER_NAME: ${{ inputs.publisher-name }}
+      run: |
+        python3 -m pip install uv
+        uv run $GITHUB_ACTION_PATH/summary.py

@@ -243,6 +243,20 @@ checks:
     overwrite: ${{ inputs.overwrite }}
 ```
 
+### Summary Action
+This action is used to display the summary of the published artifacts. This needs to be used after the `Publish step`.
+
+```yaml
+- name: Publish summary
+  uses: ./summary
+  with:
+  dist-file-path: "${{ github.workspace }}/dist"
+  publisher-name: ${{ needs.release-checks.outputs.publisher-name }}
+```
+dist-file-path: Path to the directory where the artifacts are stored.
+
+publisher-name: Name of the publisher, for example, `providers`.
+
 ## Example Workflow
 A sample github workflow file to use the composite actions is shown below:
 
@@ -384,6 +398,12 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: "./dist"
+          
+      - name: Publish summary
+        uses: ./summary
+        with:
+          dist-file-path: "${{ github.workspace }}/dist"
+          publisher-name: ${{ needs.release-checks.outputs.publisher-name }}
 ```
 
 The `mode` input is used to run the action in different modes.
