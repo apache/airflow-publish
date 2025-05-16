@@ -61,6 +61,16 @@ github:
         required_approving_review_count: 1
       required_linear_history: true
       required_conversation_resolution: true
+  environments:
+    test-pypi:
+      required_reviewers:
+        - id: potiuk
+          type: User
+        - id: gopidesupavan
+          type: User
+      wait_timer: 5
+      deployment_branch_policy:
+        protected_branches: true
 #  collaborators:
 #    # Max 10 collaborators allowed
 #    # https://github.com/apache/infrastructure-asfyaml/blob/main/README.md#assigning-the-github-triage-role-to-external-collaborators

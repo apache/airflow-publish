@@ -1,2 +1,6 @@
 __pycache__/
 *./__pycache__/.*
+.idea
+.idea/*
+.ven/
+*.egg-info
