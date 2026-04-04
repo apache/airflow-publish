@@ -1,0 +1,51 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+---
+name: distributions-from-atr
+
+on:
+  workflow_dispatch:
+    inputs:
+      distribution-package:
+        description: 'Package/project name in ATR'
+        required: true
+      project:
+        description: 'Project in ATR to pull files from. eg: airflow-providers'
+        required: true
+      version:
+        description: 'Version in ATR to pull files from'
+        required: true
+      distribution-version:
+        description: 'Distribution version'
+        required: true
+
+jobs:
+  upload:
+    permissions:
+      id-token: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - name: Distribute from ATR
+        uses: apache/tooling-actions/atr-distribute-test@ca6ed9e095c40db61c42a90db2599bb2fbc2319f
+        with:
+          platform: "PyPI"
+          distribution-package: ${{ inputs.distribution-package }}
+          version: ${{ inputs.version }}
+          project: ${{ inputs.project }}
+          distribution-version: ${{ inputs.distribution-version }}
